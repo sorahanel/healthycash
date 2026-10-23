@@ -22,6 +22,21 @@ npm test            # Playwright 브라우저 기능 테스트
 
 테스트는 기본적으로 `/usr/bin/chromium`을 사용합니다. 다른 환경에서는 `CHROMIUM_PATH=/실제/브라우저/경로 npm test`로 지정할 수 있습니다. 테스트 서버는 필요한 경우 자동으로 시작합니다.
 
+## Netlify 배포
+
+GitHub의 `sorahanel/healthycash` 저장소와 `main` 브랜치를 연결합니다. 저장소의 `netlify.toml`이 다음 설정을 지정합니다.
+
+| 설정 | 값 |
+| --- | --- |
+| Base directory | 저장소 루트 (`.`) |
+| Build command | `npm run build` |
+| Publish directory | `dist` |
+| Node.js | `24` |
+
+원본의 `index.html`은 개발용 `/src/main.tsx`를 참조합니다. 저장소 루트를 그대로 공개하면 브라우저가 TypeScript 앱을 실행하지 못해 빈 화면이 나올 수 있습니다. 빌드를 실행한 뒤 `dist/index.html`과 `dist/assets`를 함께 배포해야 합니다. `dist`는 빌드 중 생성되므로 Git에 올리지 않습니다.
+
+기존 Netlify 사이트는 최신 커밋으로 다시 배포하세요. 자동 배포가 꺼져 있다면 Deploys에서 **Trigger deploy → Deploy site**를 실행합니다. 배포 로그에서 `npm run build`가 성공하고 게시 폴더가 `dist`인지 확인하세요. 수동 파일 업로드를 사용할 때도 빌드된 `dist` 폴더를 올립니다. 이 시연 앱에는 별도 환경 변수나 API 키가 필요하지 않습니다.
+
 ## 구현한 흐름
 
 | 영역        | 체험할 수 있는 내용                                                       |
