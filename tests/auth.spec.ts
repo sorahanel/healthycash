@@ -57,6 +57,7 @@ test("first login, profile edit, reload, logout and returning login keep one mem
   await profile("kakao", code).delete();
   await providerScreen(page, "kakao", code);
   await page.goto("/");
+  await expect.poll(() => page.evaluate(() => localStorage.getItem("healthycash-demo-v1"))).not.toBeNull();
   const before = await page.evaluate(() =>
     localStorage.getItem("healthycash-demo-v1"),
   );
