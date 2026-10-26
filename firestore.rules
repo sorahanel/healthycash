@@ -1,0 +1,13 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{uid} {
+      allow get: if request.auth != null && request.auth.uid == uid;
+      allow list, create, update, delete: if false;
+    }
+    // Only the Admin SDK in trusted server functions may use authentication state.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

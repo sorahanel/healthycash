@@ -7,21 +7,31 @@
     "dev": "vite --host 0.0.0.0",
     "build": "tsc -b && vite build",
     "preview": "vite preview --host 0.0.0.0",
-    "test": "playwright test"
+    "test": "playwright test",
+    "test:server": "node --test tests/server/*.test.mjs",
+    "test:functions": "node scripts/check-functions.mjs",
+    "test:firebase": "firebase emulators:exec --project demo-healthycash --only auth,firestore \"node --test tests/firebase/*.test.mjs\"",
+    "test:auth": "firebase emulators:exec --project demo-healthycash --only auth,firestore \"node --test tests/firebase/*.test.mjs && playwright test --config playwright.auth.config.ts\"",
+    "dev:netlify": "npx netlify-cli dev"
   },
   "dependencies": {
-    "react": "^19.1.0",
-    "react-dom": "^19.1.0",
+    "firebase": "^13.1.0",
+    "firebase-admin": "^14.5.0",
     "lucide-react": "^0.468.0",
-    "qrcode": "^1.5.4"
+    "qrcode": "^1.5.4",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
   },
   "devDependencies": {
+    "@firebase/rules-unit-testing": "^6.0.0",
+    "@netlify/zip-it-and-ship-it": "^16.5.1",
+    "@playwright/test": "^1.56.0",
+    "@types/qrcode": "^1.5.5",
     "@types/react": "^19.1.0",
     "@types/react-dom": "^19.1.0",
-    "@types/qrcode": "^1.5.5",
     "@vitejs/plugin-react": "^4.5.0",
+    "firebase-tools": "^15.34.1",
     "typescript": "~5.8.3",
-    "vite": "^6.3.5",
-    "@playwright/test": "^1.56.0"
+    "vite": "^6.3.5"
   }
 }

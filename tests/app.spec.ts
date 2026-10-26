@@ -2,6 +2,60 @@ import { test, expect, type Page } from "@playwright/test";
 const sidebar = (page: Page) => page.locator(".sidebar");
 const stored = (page: Page) =>
   page.evaluate(() => JSON.parse(localStorage.getItem("healthycash-demo-v1")!));
+test("인증 설정이 없어도 시연은 유지하고 로그인 준비 상태를 보여준다", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page
+    .locator(".header-actions")
+    .getByRole("button", { name: "로그인", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "나의 건강한 일상, 함께 시작해요" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "카카오로 시작하기" }),
+  ).toBeDisabled();
+  await expect(
+    page.getByRole("button", { name: "네이버로 시작하기" }),
+  ).toBeDisabled();
+  await expect(page.getByText("로그인 연결을 준비 중이에요.")).toBeVisible();
+  expect((await stored(page)).balance).toBe(2480);
+  await page.screenshot({
+    path: "test-results/account-desktop.png",
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect
+    .poll(() =>
+      page
+        .locator(".sidebar")
+        .evaluate((element) => element.getBoundingClientRect().right <= 0),
+    )
+    .toBe(true);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page.screenshot({
+    path: "test-results/account-mobile.png",
+    fullPage: true,
+  });
+  await page.getByRole("button", { name: "로그인 없이 시연 둘러보기" }).click();
+  await expect(
+    page.getByText("지민님, 오늘도 건강을 쌓아볼까요?"),
+  ).toBeVisible();
+});
+test("로그인 연결 실패 화면에서 토큰을 남기지 않고 다시 시연으로 돌아간다", async ({
+  page,
+}) => {
+  await page.goto("/auth/complete?error=invalid_state");
+  await expect(page.getByRole("alert")).toContainText("다시 시작");
+  await expect(page).toHaveURL("http://127.0.0.1:5173/");
+  await page.getByRole("button", { name: "로그인 없이 시연 둘러보기" }).click();
+  expect((await stored(page)).balance).toBe(2480);
+});
 test.beforeEach(async ({ page }) => {
   await page.goto("/");
 });

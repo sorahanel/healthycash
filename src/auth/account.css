@@ -1,0 +1,185 @@
+.account-page {
+  max-width: 1080px;
+  margin: 0 auto;
+}
+.account-grid {
+  display: grid;
+  grid-template-columns: 1.15fr 1fr;
+  gap: 24px;
+  align-items: start;
+}
+.account-card {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  padding: 32px;
+}
+.account-card h2 {
+  font-size: 23px;
+  letter-spacing: -0.7px;
+  margin: 14px 0 12px;
+}
+.account-card > p {
+  color: #607563;
+  line-height: 1.8;
+}
+.account-symbol {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  background: #edf4e6;
+  color: var(--green);
+  border-radius: 20px;
+}
+.social-logins {
+  display: grid;
+  gap: 12px;
+  margin: 28px 0 20px;
+}
+.social-login {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  min-height: 52px;
+  border-radius: 12px;
+  font-weight: 700;
+}
+.social-login.kakao {
+  background: #fee500;
+  color: #191919;
+}
+.social-login.naver {
+  background: #03c75a;
+  color: #fff;
+}
+.social-login > span,
+.social-login > b {
+  position: absolute;
+  left: 22px;
+}
+.account-card .account-privacy {
+  font-size: 12px;
+  color: #71816e;
+}
+.account-card .account-availability {
+  font-size: 13px;
+  margin: 16px 0;
+  padding: 12px;
+  background: #f5f7f0;
+  border-radius: 10px;
+}
+.account-demo {
+  background: linear-gradient(140deg, #edf5e7, #f9fbf6);
+  color: #3e6847;
+}
+.account-demo > p + p {
+  margin-top: 15px;
+}
+.account-demo .btn {
+  margin-top: 28px;
+}
+.account-heading {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 24px;
+}
+.account-heading h2 {
+  margin: 0 0 5px;
+}
+.account-heading p {
+  font-size: 13px;
+  color: #72836c;
+}
+.account-card form .btn {
+  width: 100%;
+  margin-top: 20px;
+}
+.account-meta {
+  color: #73876b;
+  font-size: 12px;
+  margin-top: 16px;
+}
+.account-logout {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 25px;
+  padding: 8px 0;
+  color: #647661;
+}
+.account-alert {
+  border: 1px solid #ead4bc;
+  background: #fff6ec;
+  color: #805b32;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+.account-feedback {
+  color: #2d6845;
+  margin-bottom: 18px;
+}
+.account-access {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 20px;
+  background: #eaf2e3;
+  color: #2b6549;
+  font-weight: 600;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.account-status-note {
+  font-size: 12px;
+  padding: 10px 16px;
+  background: #edf3e6;
+  color: #557747;
+  border-radius: 12px;
+  margin-bottom: 20px;
+}
+.account-status-note button {
+  text-decoration: underline;
+  margin-left: 6px;
+}
+.demo-profile-label {
+  font-size: 11px;
+  color: #77866a;
+  display: block;
+  margin-top: 2px;
+}
+@media (max-width: 780px) {
+  .account-grid {
+    grid-template-columns: 1fr;
+  }
+  .account-card {
+    padding: 24px;
+  }
+  .account-page .page-intro h1 {
+    font-size: 25px;
+  }
+}
+@media (max-width: 640px) {
+  .account-access {
+    font-size: 11px;
+    padding: 7px 9px;
+  }
+  .account-access svg {
+    display: none;
+  }
+  .header-actions:has(.account-access) .town-button {
+    display: none;
+  }
+  .account-page .page-intro h1 {
+    font-size: 23px;
+  }
+  .account-card h2 {
+    font-size: 21px;
+  }
+}

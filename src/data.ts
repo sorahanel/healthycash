@@ -1,10 +1,5 @@
-export const neighborhoods = [
-  "효자4동",
-  "효자5동",
-  "서신동",
-  "평화2동",
-  "에코시티",
-];
+import memberOptions from "../shared/member-options.json";
+export const neighborhoods = memberOptions.neighborhoods;
 export const todayKey = () =>
   new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Seoul" }).format(
     new Date(),

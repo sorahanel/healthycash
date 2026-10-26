@@ -4,3 +4,12 @@ playwright-report/
 test-results/
 *.local
 *.tsbuildinfo
+.env
+.env.*
+!.env.example
+*-firebase-adminsdk-*.json
+*service-account*.json
+.netlify/
+.firebase/
+*-debug.log
+*-debug.*.log

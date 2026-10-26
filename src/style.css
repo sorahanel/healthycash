@@ -179,6 +179,7 @@ strong {
   top: 10px;
 }
 .sidebar {
+  overflow-y: auto;
   width: 230px;
   height: 100dvh;
   background: #fff;

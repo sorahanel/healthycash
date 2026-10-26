@@ -50,6 +50,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import QRCode from "qrcode";
+import { AccountPage } from "./auth/AccountPage";
+import { useAuth } from "./auth/AuthProvider";
 import {
   articles,
   challenges,
@@ -75,7 +77,8 @@ type Page =
   | "records"
   | "rewards"
   | "wallet"
-  | "admin";
+  | "admin"
+  | "account";
 type ModalType = {
   kind:
     | "article"
@@ -219,8 +222,11 @@ function WeekChart({ expanded = false }: { expanded?: boolean }) {
   );
 }
 function App() {
+  const auth = useAuth();
   const [state, setState] = useState<DemoState>(loadState);
-  const [page, setPage] = useState<Page>("home");
+  const [page, setPage] = useState<Page>(() =>
+    window.location.pathname === "/auth/complete" ? "account" : "home",
+  );
   const [modal, setModal] = useState<ModalType>(null);
   const [toast, setToast] = useState("");
   const [mobileNav, setMobileNav] = useState(false);
@@ -256,6 +262,19 @@ function App() {
   const dialogRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLElement | null>(null);
   const currentTier = tier(state.xp);
+  const previousMember = useRef<string | null>(null);
+  useEffect(() => {
+    const uid = auth.user?.uid || null;
+    if (previousMember.current !== uid) {
+      // Account changes never adopt the demo profile, balances, or in-memory health data.
+      previousMember.current = uid;
+      setRecordConsent(false);
+      setConsentChoice(false);
+      setRecords([]);
+      setLabs(null);
+      setModal(null);
+    }
+  }, [auth.user?.uid]);
   useEffect(() => {
     try {
       localStorage.setItem("healthycash-demo-v1", JSON.stringify(state));
@@ -443,11 +462,13 @@ function App() {
   const selectedChallenge =
     challenges.find((c) => c.id === modal?.id) || challenges[0];
   const title =
-    page === "wallet"
-      ? "내 HC 지갑"
-      : page === "admin"
-        ? "운영 대시보드"
-        : nav.find((n) => n.id === page)?.label;
+    page === "account"
+      ? "마이페이지"
+      : page === "wallet"
+        ? "내 HC 지갑"
+        : page === "admin"
+          ? "운영 대시보드"
+          : nav.find((n) => n.id === page)?.label;
   function missionRows(full = false) {
     return (
       <div className="mission-list">
@@ -603,6 +624,14 @@ function App() {
         </nav>
         <div className="sidebar-divider" />
         <button
+          className={`nav-item ${page === "account" ? "active" : ""}`}
+          onClick={() => go("account")}
+          aria-current={page === "account" ? "page" : undefined}
+        >
+          <Users size={20} />
+          <span>마이페이지</span>
+        </button>
+        <button
           className={`nav-item ${page === "wallet" ? "active" : ""}`}
           onClick={() => go("wallet")}
         >
@@ -674,6 +703,10 @@ function App() {
             <strong>{title}</strong>
           </div>
           <div className="header-actions">
+            <button className="account-access" onClick={() => go("account")}>
+              <Users size={15} />
+              {auth.user ? "마이페이지" : "로그인"}
+            </button>
             <button
               className="town-button"
               onClick={() => {
@@ -715,6 +748,14 @@ function App() {
               서비스 알아보기 <ArrowUpRight size={13} />
             </button>
           </div>
+          {page === "account" && <AccountPage onDemo={() => go("home")} />}
+          {page !== "account" && auth.user && (
+            <div className="account-status-note">
+              회원 로그인 중 · 아래 HC와 건강 활동은 계정에 저장되지 않는 시연
+              데이터예요.
+              <button onClick={() => go("account")}>내 회원정보</button>
+            </div>
+          )}
           {page === "home" && (
             <>
               <div className="page-intro">
@@ -3042,6 +3083,18 @@ function App() {
               {modal.kind === "settings" && (
                 <>
                   <h2 id="modal-title">나의 헬시캐시 설정</h2>
+                  <p className="demo-profile-label">
+                    아래 프로필은 이 브라우저의 시연용 설정이에요.
+                  </p>
+                  <button
+                    className="text-btn"
+                    onClick={() => {
+                      setModal(null);
+                      go("account");
+                    }}
+                  >
+                    회원 마이페이지 <ChevronRight size={15} />
+                  </button>
                   <div className="profile-box">
                     <span className="avatar">{state.name.slice(0, 1)}</span>
                     <div>
