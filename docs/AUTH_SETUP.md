@@ -2,23 +2,29 @@
 
 현재 배포 주소: https://healthycashsh.netlify.app/
 
+연결할 Firebase 프로젝트: [`healthycash`](https://console.firebase.google.com/project/healthycash/overview?hl=ko). `.firebaserc`와 환경변수 예시는 이 프로젝트 기준입니다. 테스트는 별도의 `demo-healthycash` 에뮬레이터 프로젝트를 명시적으로 사용합니다.
+
 코드는 로그인·회원 저장 기능을 포함합니다. 실제 계정과 비밀키는 저장소에 없으므로, 아래 콘솔 설정과 Firestore 규칙 배포 후 Netlify를 다시 배포해야 로그인 버튼이 활성화됩니다. 환경변수가 없는 상태에서도 기존 시연은 동작합니다.
 
 ## 1. Firebase 프로젝트
 
-1. [Firebase 콘솔](https://console.firebase.google.com/)에서 프로젝트를 생성합니다.
-2. 프로젝트 설정 → 내 앱 → 웹 앱을 등록하고 `firebaseConfig` 값을 확인합니다.
+지금 Authentication의 로그인 방법 목록에 보이는 **GitHub는 이용자의 GitHub 계정 로그인**입니다. GitHub 코드 저장소나 Netlify 배포 권한을 연결하는 설정이 아닙니다. 이번 구현의 네이버·카카오 로그인은 서버에서 Firebase custom token을 발급하므로, 이 목록에서 GitHub·OpenID Connect·SAML 제공업체를 추가할 필요가 없습니다.
+
+1. 이미 만든 [`healthycash` 프로젝트](https://console.firebase.google.com/project/healthycash/overview?hl=ko)를 엽니다.
+2. [프로젝트 설정 → 일반 → 내 앱](https://console.firebase.google.com/project/healthycash/settings/general?hl=ko)으로 이동합니다. 웹 앱이 없으면 **웹 앱 `</>`**을 선택하고 닉네임을 `healthycash-web` 등으로 등록합니다. 현재 Netlify를 사용하므로 Firebase Hosting 연결은 선택하지 않아도 됩니다. SDK 설정의 `firebaseConfig`에서 `apiKey`, `authDomain`, `projectId`, `appId`를 확인합니다. 이 웹 설정은 공개 가능한 값입니다. 서비스 계정 비공개키와는 다릅니다.
 3. Authentication을 시작하고 설정 → 승인된 도메인에 `healthycashsh.netlify.app`을 추가합니다. 로컬 개발에는 `localhost`, `127.0.0.1`을 명시적으로 추가합니다.
 4. Firestore Database를 **프로덕션 모드**로 생성합니다. 실제 운영 대상에 맞는 위치(예: 서울 `asia-northeast3`)를 선택합니다. 데이터베이스 위치는 나중에 간단히 변경할 수 없으므로 확인합니다.
 5. 프로젝트 설정 → 서비스 계정 → Firebase Admin SDK에서 서버용 비공개키를 준비합니다. JSON의 `project_id`, `client_email`, `private_key`를 서버 환경변수에 넣습니다. JSON 파일 자체를 저장소에 넣지 않습니다.
-6. Firebase CLI에 본인 계정으로 로그인하고 규칙을 배포합니다. `YOUR_PROJECT_ID`는 실제 프로젝트 ID로 바꿉니다.
+6. Firebase CLI에 본인 계정으로 로그인하고 `healthycash` 프로젝트에 규칙을 배포합니다.
 
 ```bash
 npx firebase login
-npx firebase deploy --only firestore:rules,firestore:indexes --project YOUR_PROJECT_ID
+npx firebase deploy --only firestore:rules,firestore:indexes --project healthycash
 ```
 
-로컬 CLI에서 권한이 없으면 Firebase 콘솔의 Firestore → 규칙에서 `firestore.rules` 내용을 게시할 수 있습니다. `firestore.indexes.json`은 `oauthFlows`, `loginTickets`의 `expiresAt`에 TTL을 설정합니다. TTL 자동 정리는 즉시 실행되지 않으며 요금제·과금 조건을 확인해야 합니다. **인증 만료와 재사용 차단은 서버 코드가 직접 검사하므로 TTL 처리 속도에 의존하지 않습니다.** TTL을 사용하지 않으면 만료된 문서의 주기적인 서버 정리를 설정하세요.
+로컬 CLI에서 권한이 없으면 Firebase 콘솔의 Firestore → 규칙에서 `firestore.rules` 내용을 게시할 수 있습니다.
+
+제공해 주신 콘솔 화면은 **Spark 무료 요금제**입니다. 기본 설정은 결제 연결이 필요한 Firestore TTL 정책을 활성화하지 않습니다. `firestore.indexes.json`은 인증 상태의 만료 시각 필드에 불필요한 인덱스를 만들지 않도록 설정합니다. **인증 만료와 재사용 차단은 서버가 직접 검사하고, 사용한 state·교환권은 트랜잭션에서 삭제합니다.** 중간에 취소하거나 닫아서 남은 만료 문서는 Firebase 콘솔이나 승인된 서버 정리 작업으로 주기적으로 삭제해야 합니다. 추후 자동 TTL 정리를 사용할 때는 요금제·과금 조건을 확인하고 `oauthFlows`, `loginTickets`의 `expiresAt` 필드에 별도로 활성화합니다.
 
 서비스 계정에는 필요한 Firebase Authentication 및 Firestore 작업 권한만 부여합니다. 브라우저 Firebase API 키는 웹 설정이며, 서버의 비공개키와는 별개입니다. 프로젝트 ID는 브라우저와 서버가 같아야 합니다.
 
