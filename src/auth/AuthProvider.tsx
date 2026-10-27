@@ -13,6 +13,7 @@ import {
 } from "firebase/auth";
 import { doc, onSnapshot, type Timestamp } from "firebase/firestore";
 import { firebase } from "./firebase";
+import { AuthRequestError, firebaseSignInError, supportCode } from "./errors";
 
 export type Provider = "kakao" | "naver";
 export type Member = {
@@ -25,6 +26,7 @@ export type Member = {
   lastLoginAt: Timestamp;
 };
 const messages: Record<string, string> = {
+  login_failed: "로그인을 완료하지 못했어요. 다시 시도해 주세요.",
   cancelled: "로그인을 취소했어요. 원하실 때 다시 시작할 수 있어요.",
   invalid_state:
     "로그인 요청을 확인할 수 없어요. 이 화면에서 다시 시작해 주세요.",
@@ -38,10 +40,12 @@ const messages: Record<string, string> = {
 };
 function describe(error: unknown) {
   const code = error instanceof Error ? error.message : "";
-  return (
-    messages[code] ||
+  const message = (
+    (Object.hasOwn(messages, code) ? messages[code] : "") ||
     "요청을 완료하지 못했어요. 연결을 확인하고 다시 시도해 주세요."
   );
+  const reference = supportCode(error);
+  return reference ? `${message} (확인 코드: ${reference})` : message;
 }
 export async function api(path: string, init: RequestInit = {}) {
   const response = await fetch(`/.netlify/functions/${path}`, {
@@ -51,7 +55,11 @@ export async function api(path: string, init: RequestInit = {}) {
     headers: { "Content-Type": "application/json", ...init.headers },
   });
   const data = await response.json();
-  if (!response.ok) throw new Error(data.error || "request_failed");
+  if (!response.ok)
+    throw new AuthRequestError(
+      typeof data.error === "string" ? data.error : "request_failed",
+      data.diagnostic,
+    );
   return data;
 }
 let completion: Promise<void> | undefined;
@@ -59,15 +67,22 @@ function finishLogin() {
   // One exchange per document, including React StrictMode's effect replay.
   if (!completion)
     completion = (async () => {
-      const error = new URLSearchParams(window.location.search).get("error");
+      const parameters = new URLSearchParams(window.location.search);
+      const error = parameters.get("error");
+      const diagnostic = parameters.get("diagnostic");
       window.history.replaceState(null, "", "/");
-      if (error) throw new Error(error);
-      if (!firebase) throw new Error("auth_unavailable");
+      if (error) throw new AuthRequestError(error, diagnostic);
+      if (!firebase)
+        throw new AuthRequestError("auth_unavailable", "firebase_web_config_missing");
       const { token } = await api("auth-exchange", {
         method: "POST",
         body: "{}",
       });
-      await signInWithCustomToken(firebase.auth, token);
+      try {
+        await signInWithCustomToken(firebase.auth, token);
+      } catch (error) {
+        throw firebaseSignInError(error);
+      }
     })();
   return completion;
 }

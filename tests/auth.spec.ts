@@ -158,3 +158,20 @@ test("member API rejects unauthenticated and cross-site mutations", async ({
   });
   expect(foreign.status()).toBe(403);
 });
+test("login completion shows safe support codes for exchange and Firebase SDK failures", async ({ page }) => {
+  await page.route("**/.netlify/functions/auth-exchange", (route) => route.fulfill({
+    status: 503,
+    json: { error: "server_error", diagnostic: "firebase_auth_permission_denied" },
+  }));
+  await page.goto("/auth/complete");
+  await expect(page.getByRole("alert")).toContainText("확인 코드: HC-F03");
+  await expect(page).toHaveURL("http://127.0.0.1:5175/");
+  await page.unroute("**/.netlify/functions/auth-exchange");
+  await page.route("**/.netlify/functions/auth-exchange", (route) => route.fulfill({
+    json: { token: "INVALID-PRIVATE-TOKEN-CANARY" },
+  }));
+  await page.goto("/auth/complete");
+  await expect(page.getByRole("alert")).toContainText("확인 코드: HC-F08");
+  await expect(page.getByRole("alert")).not.toContainText("INVALID-PRIVATE-TOKEN-CANARY");
+  await expect(page.getByLabel("회원 닉네임")).toHaveCount(0);
+});

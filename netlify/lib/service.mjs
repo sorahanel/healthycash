@@ -1,7 +1,7 @@
 import options from "../../shared/member-options.json" with { type: "json" };
 import { authorizationUrl } from "./providers.mjs";
 import { enabled } from "./config.mjs";
-import { setupFailureResponse } from "./diagnostics.mjs";
+import { setupFailureResponse, reportAuthFailure, safeDiagnostic } from "./diagnostics.mjs";
 import {
   body,
   clearCookies,
@@ -30,10 +30,15 @@ export function createHandlers({
   secret = random,
 }) {
   const binding = (event) => cookie(event, cookieName(config, "oauth"));
-  const complete = (error) =>
-    `${config.origin}/auth/complete${error ? `?error=${error}` : ""}`;
+  const complete = (error, diagnostic) => {
+    const query = new URLSearchParams();
+    if (error) query.set("error", error);
+    if (safeDiagnostic(diagnostic)) query.set("diagnostic", diagnostic);
+    return `${config.origin}/auth/complete${query.size ? `?${query}` : ""}`;
+  };
   async function callback(event, provider) {
     method(event, "GET");
+    let stage = "oauth_state_claim";
     try {
       const state = parameter(event, "state"),
         browser = binding(event);
@@ -45,10 +50,14 @@ export function createHandlers({
         return redirect(complete("cancelled"), clearCookies(config));
       const code = parameter(event, "code");
       if (!code || code.length > 2048) fail(400, "invalid_request");
+      stage = "provider_authenticate";
       const member = await providers.authenticate(provider, code, state);
+      stage = "firebase_user_ensure";
       await identity.ensureUser(member);
+      stage = "member_upsert";
       await store.upsertMember(member, now());
       const ticket = secret();
+      stage = "login_ticket_create";
       await store.createTicket(hash(ticket), {
         uid: member.uid,
         provider,
@@ -62,7 +71,10 @@ export function createHandlers({
         ["invalid_state", "account_disabled"].includes(error.code)
           ? error.code
           : "login_failed";
-      return redirect(complete(code), clearCookies(config));
+      const diagnostic = code === "login_failed"
+        ? reportAuthFailure(stage, error)
+        : undefined;
+      return redirect(complete(code, diagnostic), clearCookies(config));
     }
   }
   const handlers = {
@@ -98,13 +110,21 @@ export function createHandlers({
         browser = binding(event);
       if (!validSecret(ticket) || !validSecret(browser))
         fail(401, "login_expired");
-      const member = await store.claimTicket(
-        hash(ticket),
-        hash(browser),
-        now(),
-      );
-      const token = await identity.customToken(member.uid, member.provider);
-      return json(200, { token }, clearCookies(config));
+      let stage = "login_ticket_claim";
+      try {
+        const member = await store.claimTicket(
+          hash(ticket),
+          hash(browser),
+          now(),
+        );
+        stage = "firebase_token_create";
+        const token = await identity.customToken(member.uid, member.provider);
+        return json(200, { token }, clearCookies(config));
+      } catch (error) {
+        if (error instanceof HttpError) throw error;
+        const diagnostic = reportAuthFailure(stage, error);
+        return json(503, { error: "server_error", diagnostic }, clearCookies(config));
+      }
     },
     async "member-profile"(event) {
       method(event, "PATCH");

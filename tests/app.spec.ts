@@ -56,6 +56,17 @@ test("로그인 연결 실패 화면에서 토큰을 남기지 않고 다시 시
   await page.getByRole("button", { name: "로그인 없이 시연 둘러보기" }).click();
   expect((await stored(page)).balance).toBe(2480);
 });
+test("로그인 실패 확인 코드는 표시하고 임의 진단값과 콜백 정보는 남기지 않는다", async ({ page }) => {
+  await page.goto("/auth/complete?error=login_failed&diagnostic=provider_client_rejected&code=PRIVATE-CALLBACK-CANARY");
+  await expect(page.getByRole("alert")).toContainText("확인 코드: HC-P01");
+  await expect(page.getByRole("alert")).toContainText("로그인을 완료하지 못했어요");
+  await expect(page).toHaveURL("http://127.0.0.1:5173/");
+  await expect(page.locator("body")).not.toContainText("PRIVATE-CALLBACK-CANARY");
+  await page.goto("/auth/complete?error=login_failed&diagnostic=PRIVATE-UNKNOWN-CANARY");
+  await expect(page.getByRole("alert")).toContainText("로그인을 완료하지 못했어요");
+  await expect(page.getByRole("alert")).not.toContainText("확인 코드");
+  await expect(page.locator("body")).not.toContainText("PRIVATE-UNKNOWN-CANARY");
+});
 test.beforeEach(async ({ page }) => {
   await page.goto("/");
 });

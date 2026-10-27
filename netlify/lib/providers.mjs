@@ -1,5 +1,19 @@
 import { callbackUrl } from "./config.mjs";
-import { fail, hash } from "./security.mjs";
+import { fail, hash, HttpError } from "./security.mjs";
+
+function providerFailure(phase, payload) {
+  let diagnostic = phase === "profile"
+    ? "provider_profile_failed"
+    : "provider_token_failed";
+  // Classify only known provider error names; discard the entire raw payload.
+  if (phase === "token") {
+    if (payload?.error === "invalid_client" || payload?.error_code === "KOE010")
+      diagnostic = "provider_client_rejected";
+    else if (payload?.error === "invalid_grant")
+      diagnostic = "provider_code_rejected";
+  }
+  throw Object.assign(new HttpError(502, "provider_failed"), { diagnostic });
+}
 
 export function authorizationUrl(config, provider, state) {
   const url = new URL(
@@ -28,7 +42,7 @@ export function cleanNickname(value) {
   return result || "헬시 이웃";
 }
 export function createProviders(config, request = fetch) {
-  async function call(url, options) {
+  async function call(url, options, phase) {
     let response;
     try {
       response = await request(url, {
@@ -39,12 +53,15 @@ export function createProviders(config, request = fetch) {
     } catch {
       fail(502, "provider_unavailable");
     }
-    if (!response.ok) fail(502, "provider_failed");
+    let payload;
     try {
-      return await response.json();
+      payload = await response.json();
     } catch {
-      fail(502, "provider_failed");
+      providerFailure(phase);
     }
+    if (!response.ok || !payload || typeof payload !== "object" || Array.isArray(payload) || payload.error)
+      providerFailure(phase, payload);
+    return payload;
   }
   return {
     async authenticate(provider, code, state) {
@@ -66,14 +83,14 @@ export function createProviders(config, request = fetch) {
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
           body: new URLSearchParams(fields).toString(),
         },
+        "token",
       );
       if (
-        token.error ||
         typeof token.access_token !== "string" ||
         !token.access_token ||
         token.access_token.length > 8192
       )
-        fail(502, "provider_failed");
+        providerFailure("token");
       const profile = await call(
         provider === "kakao"
           ? "https://kapi.kakao.com/v2/user/me"
@@ -81,6 +98,7 @@ export function createProviders(config, request = fetch) {
         {
           headers: { Authorization: `Bearer ${token.access_token}` },
         },
+        "profile",
       );
       let id, nickname;
       if (provider === "kakao") {
@@ -91,7 +109,7 @@ export function createProviders(config, request = fetch) {
           (typeof profile.id !== "string" ||
             !/^[1-9]\d{0,30}$/.test(profile.id))
         )
-          fail(502, "provider_failed");
+          providerFailure("profile");
         id = String(profile.id);
         nickname = profile.kakao_account?.profile?.nickname;
       } else {
@@ -101,7 +119,7 @@ export function createProviders(config, request = fetch) {
           !profile.response.id ||
           profile.response.id.length > 256
         )
-          fail(502, "provider_failed");
+          providerFailure("profile");
         id = profile.response.id;
         nickname = profile.response.nickname;
       }

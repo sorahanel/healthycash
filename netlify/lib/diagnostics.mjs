@@ -1,8 +1,23 @@
-import { json } from "./security.mjs";
+import codes from "../../shared/auth-diagnostics.json" with { type: "json" };
+import { HttpError, json } from "./security.mjs";
+
+const storageStages = [
+  "oauth_state_create", "oauth_state_claim", "member_upsert",
+  "login_ticket_create", "login_ticket_claim",
+];
+const stages = [
+  ...storageStages, "firebase_initialize", "provider_authenticate",
+  "firebase_user_ensure", "firebase_token_create",
+];
+export const safeDiagnostic = (value) =>
+  typeof value === "string" && Object.hasOwn(codes, value) ? value : undefined;
 
 // Return only fixed labels. SDK messages may contain credentials, URLs or
 // document paths; never copy messages, stacks, metadata or requests into logs.
 export function setupDiagnostic(stage, error) {
+  stage = stages.includes(stage) ? stage : "unknown";
+  if (error instanceof HttpError && safeDiagnostic(error.diagnostic))
+    return error.diagnostic;
   const code = error?.code;
   const message = typeof error?.message === "string" ? error.message : "";
   const oauthError = error?.response?.data?.error;
@@ -16,7 +31,12 @@ export function setupDiagnostic(stage, error) {
     /invalid_grant|invalid jwt signature/i.test(message)
   )
     return "firebase_credentials_rejected";
-  if (stage === "oauth_state_create") {
+  if (code === "auth/insufficient-permission")
+    return "firebase_auth_permission_denied";
+  if (["auth/configuration-not-found", "auth/project-not-found"].includes(code))
+    return "firebase_auth_not_configured";
+  if (code === "provider_unavailable") return "provider_unavailable";
+  if (storageStages.includes(stage)) {
     if (/\bSERVICE_DISABLED\b/.test(message))
       return "firestore_api_disabled";
     if ([5, "NOT_FOUND", "not-found"].includes(code))
@@ -30,19 +50,30 @@ export function setupDiagnostic(stage, error) {
     if ([4, 14, "DEADLINE_EXCEEDED", "UNAVAILABLE", "deadline-exceeded", "unavailable"].includes(code))
       return "firestore_unavailable";
   }
-  return "auth_setup_failed";
+  return {
+    provider_authenticate: "provider_token_failed",
+    firebase_user_ensure: "firebase_user_create_failed",
+    firebase_token_create: "firebase_custom_token_failed",
+    member_upsert: "member_save_failed",
+    login_ticket_create: "login_ticket_failed",
+    login_ticket_claim: "login_ticket_failed",
+    oauth_state_claim: "login_completion_failed",
+  }[stage] || "auth_setup_failed";
 }
 
-export function setupFailureResponse(stage, error, publicError, log = console.error) {
-  const safeStage = ["firebase_initialize", "oauth_state_create"].includes(stage)
-    ? stage
-    : "unknown";
+export function reportAuthFailure(stage, error, log = console.error) {
+  const safeStage = stages.includes(stage) ? stage : "unknown";
   const diagnostic = setupDiagnostic(safeStage, error);
   log(JSON.stringify({
     event: "auth_setup_failure",
     stage: safeStage,
     diagnostic,
   }));
+  return diagnostic;
+}
+
+export function setupFailureResponse(stage, error, publicError, log = console.error) {
+  const diagnostic = reportAuthFailure(stage, error, log);
   return json(503, {
     error: publicError === "auth_unavailable" ? "auth_unavailable" : "server_error",
     diagnostic,

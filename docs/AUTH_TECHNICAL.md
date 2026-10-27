@@ -101,3 +101,7 @@ npx firebase deploy --only firestore:rules,firestore:indexes --project healthyca
 서버 로그에는 `event: auth_setup_failure`, 고정된 `stage`, 고정된 `diagnostic`만 남깁니다. 원본 오류 메시지·stack·metadata·요청·토큰·회원 ID·문서 경로·환경변수는 출력하지 않습니다. `auth-config`는 계속 설정값 존재 여부만 반환하며, 실제 Firebase 접속을 검증하는 엔드포인트가 아닙니다.
 
 재현 테스트는 `tests/server/diagnostics.test.mjs`에서 실행합니다. 저장 실패가 인증을 진행시키지 않는지, 실제 Firebase Admin SDK의 잘못된 PEM이 안전한 진단으로 바뀌는지, 응답과 로그에 민감한 테스트 문자열이 없는지 확인합니다.
+
+진단은 콜백의 state 소비, 제공자 인증 결과 교환, Firebase 사용자 준비, 회원 문서 저장, 일회용 교환권 발급·소비, custom token 생성까지 포함합니다. 제공자의 HTTP 오류 응답과 HTTP 200 오류 응답 모두 JSON에서 허용된 오류 이름만 분류하며, 원본 응답과 오류 설명은 버립니다. `invalid_client` 또는 카카오 `KOE010`은 제공자 인증정보 거부로 분류하고, 실제 키 값이나 응답 본문은 전달하지 않습니다.
+
+콜백은 고정된 `/auth/complete`에 허용 목록의 `error`와 `diagnostic` 이름만 전달합니다. 앱은 이를 읽은 즉시 주소에서 제거하고, `shared/auth-diagnostics.json`에 정의된 짧은 확인 코드만 표시합니다. 임의 query 값은 화면이나 저장소에 보존하지 않습니다. 교환 API와 브라우저 Firebase SDK 실패도 같은 확인 코드 체계로 구분합니다. custom token 생성이 실패해도 소비한 교환권을 되살리거나 재사용하지 않습니다.
