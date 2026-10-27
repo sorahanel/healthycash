@@ -7,6 +7,14 @@
   NODE_VERSION = "24"
   NPM_FLAGS = "--include=dev"
 
+# Public Firebase web-app configuration. These values are included in the browser bundle.
+# Server credentials must be set separately in Netlify environment variables (Functions scope).
+[context.production.environment]
+  VITE_FIREBASE_API_KEY = "AIzaSyAPXexGf-oFN9BLt8kVDLT7yWIjhKpwMR8"
+  VITE_FIREBASE_AUTH_DOMAIN = "healthycash.firebaseapp.com"
+  VITE_FIREBASE_PROJECT_ID = "healthycash"
+  VITE_FIREBASE_APP_ID = "1:338718980944:web:e7de5936b40e8890e48a55"
+
 [functions]
   directory = "netlify/functions"
   node_bundler = "esbuild"

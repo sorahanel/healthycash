@@ -4,7 +4,17 @@
 
 연결할 Firebase 프로젝트: [`healthycash`](https://console.firebase.google.com/project/healthycash/overview?hl=ko). `.firebaserc`와 환경변수 예시는 이 프로젝트 기준입니다. 테스트는 별도의 `demo-healthycash` 에뮬레이터 프로젝트를 명시적으로 사용합니다.
 
-코드는 로그인·회원 저장 기능을 포함합니다. 실제 계정과 비밀키는 저장소에 없으므로, 아래 콘솔 설정과 Firestore 규칙 배포 후 Netlify를 다시 배포해야 로그인 버튼이 활성화됩니다. 환경변수가 없는 상태에서도 기존 시연은 동작합니다.
+코드는 로그인·회원 저장 기능을 포함합니다. 제공받은 **공개 웹 설정 4개는 `netlify.toml`의 운영 빌드에 반영했습니다.** 서버 비밀키는 저장소에 없으므로, 아래 콘솔 설정·Functions 환경변수·Firestore 규칙 배포 후 Netlify를 다시 배포해야 로그인 버튼이 활성화됩니다. 서버 설정 전에도 기존 시연은 동작합니다.
+
+### 지금 남은 연결 작업
+
+1. Firestore Database 생성 → 저장소의 `firestore.rules` 게시.
+2. Firebase 서비스 계정 JSON의 `project_id`, `client_email`, `private_key`를 Netlify Functions 환경변수에 직접 등록. 서비스 계정 JSON이나 비공개키를 채팅·GitHub에 올리지 않습니다.
+3. `APP_BASE_URL=https://healthycashsh.netlify.app`도 Netlify Functions 환경변수로 등록.
+4. 카카오·네이버 개발자 앱에 아래 콜백 주소 등록 → 각 제공자 키를 Netlify Functions 환경변수로 등록.
+5. Netlify 재배포 → 각 제공자로 실제 로그인 확인.
+
+프로젝트 콘솔 주소나 웹 앱 설정만으로 Codex에 Google 계정의 관리 권한이 부여되지는 않습니다. 콘솔의 규칙 게시와 비밀키 등록은 본인 계정에서 진행해야 합니다.
 
 ## 1. Firebase 프로젝트
 
@@ -57,7 +67,7 @@ REST API의 인가 코드 흐름을 사용합니다. JavaScript 키와 어드민
 
 ## 4. Netlify 환경변수
 
-프로젝트 설정 → Environment variables에 `.env.example`을 참고해 값을 등록합니다. 비밀값은 채팅·GitHub·프런트엔드 코드에 넣지 않습니다.
+프로젝트 설정 → Environment variables에 `.env.example`을 참고해 **서버용 값**을 등록합니다. 운영 웹 설정의 `VITE_` 값 4개는 `netlify.toml`에 이미 반영되어 별도 입력이 필요 없습니다. 로컬 개발은 Firebase 웹 앱 설정에서 값을 확인해 `.env`에 입력하세요. 비밀값은 채팅·GitHub·프런트엔드 코드에 넣지 않습니다.
 
 | 변수 | 값의 출처 | 적용 범위 |
 | --- | --- | --- |
@@ -74,7 +84,7 @@ REST API의 인가 코드 흐름을 사용합니다. JavaScript 키와 어드민
 | `NAVER_CLIENT_ID` | 네이버 Client ID | Functions |
 | `NAVER_CLIENT_SECRET` | 네이버 Client Secret | Functions / 비밀값 |
 
-Netlify에서 적용 범위를 나누는 옵션이 없으면 해당 배포에서 함수와 빌드가 읽을 수 있도록 설정합니다. `VITE_` 접두사는 표의 웹 설정 4개에만 붙입니다. 비공개키는 실제 줄바꿈이 있는 PEM 또는 리터럴 `\n`을 포함한 문자열 모두 처리합니다.
+Netlify에서 적용 범위를 나누는 옵션이 없으면 해당 배포에서 함수와 빌드가 읽을 수 있도록 설정합니다. **`netlify.toml`의 빌드 환경변수는 Functions 런타임 환경변수를 대신하지 않습니다.** `APP_BASE_URL`, `FIREBASE_PROJECT_ID`를 포함해 서버용 값은 Netlify UI에서 설정하세요. `VITE_` 접두사는 표의 웹 설정 4개에만 붙입니다. 비공개키는 실제 줄바꿈이 있는 PEM 또는 리터럴 `\n`을 포함한 문자열 모두 처리합니다.
 
 `APP_BASE_URL`에는 경로·쿼리 없이 고정된 실제 사이트 주소를 넣습니다. 요청 헤더나 사용자 입력으로 콜백 주소를 만들지 않습니다. Production 배포에서 이 값을 사용하고, 미리보기 배포에 운영 로그인 키를 자동으로 공유하지 마세요. 미리보기 로그인은 별도로 등록한 고정 주소와 별도 환경 설정이 필요합니다.
 
