@@ -456,7 +456,40 @@ Callback URL도 ‘로그인 뒤 돌아올 주소’입니다. 서비스 URL과 
 | `auth_unavailable` 또는 로그인 준비 안내 | 비공개키 전체와 서비스 계정 이메일을 정확히 입력했는지, Functions에 적용했는지 확인 |
 | 로그인 시간이 지났거나 요청 확인 불가 안내 | 앱의 로그인 버튼에서 새로 시작. 로그인 중간 주소를 복사하거나 이전 콜백 주소를 재사용하지 않음 |
 | 설정 확인 주소에서 앱 화면이나 404가 나옴 | GitHub 연결 배포와 서버 함수 배포 여부 확인. 수동 파일 업로드만 했는지 확인 |
+| 로그인 시작 주소에서 `server_error`가 나옴 | 아래 ‘로그인 시작 오류 확인’ 순서로 `diagnostic`을 확인. 비공개키를 반복해서 바꾸지 않음 |
 | 다시 배포하는 과정에서 실패 | Netlify Deploys에서 실패한 배포의 로그를 열고 오류 부분 확인 |
+
+### 로그인 시작 오류 확인
+
+`/.netlify/functions/auth-start?provider=kakao` 주소에서 `server_error`가 표시된다면, 카카오로 이동하기 전에 서버가 로그인 요청을 저장하는 단계에서 실패했을 수 있습니다. 현재 코드는 이때 **비밀값을 제외한 진단 이름**을 함께 표시합니다.
+
+1. Netlify **Deploys**에서 최신 GitHub main 변경을 배포하고 **Published** 상태인지 확인합니다.
+2. 앱으로 돌아가 **카카오로 시작하기**를 다시 누릅니다.
+3. 오류 화면이 나오면 `diagnostic` 뒤에 적힌 이름을 확인합니다.
+
+예를 들어 아래는 회원 저장소를 찾지 못했을 때 나오는 응답입니다. 이 예시만 보고 본인에게 같은 문제가 있다고 판단하지 말고, 실제 표시된 이름을 확인하세요.
+
+```json
+{"error":"server_error","diagnostic":"firestore_not_found"}
+```
+
+| diagnostic 이름 | 확인할 곳 |
+| --- | --- |
+| `firestore_not_found` | [Firebase Firestore](https://console.firebase.google.com/project/healthycash/firestore?hl=ko)에 기본 데이터베이스 **`(default)`**가 있는지 확인. 없다면 이 문서의 2단계로 생성. Netlify의 `FIREBASE_PROJECT_ID`도 `healthycash`인지 확인 |
+| `firestore_permission_denied` | 서비스 계정의 Firestore 사용 권한과 프로젝트의 API 사용 상태를 확인. **Firestore 규칙을 전체 공개로 바꾸지 않음** |
+| `firestore_api_disabled` | Google Cloud에서 healthycash 프로젝트의 Cloud Firestore API 사용 설정 확인 |
+| `firebase_credentials_invalid` | 비공개키의 형식을 읽지 못함. 4-5단계의 복사 범위와 따옴표 확인 |
+| `firebase_credentials_rejected` | 키의 형식은 읽었어도 Google이 서버 인증을 거부할 수 있음. `client_email`과 `private_key`를 **같은 JSON 파일**에서 가져왔는지, 해당 서비스 계정과 키가 삭제·중지되지 않았는지 확인 |
+| `firestore_precondition_failed` | 데이터베이스 상태·설정 확인이 필요함. 이 진단 이름을 개발 담당자에게 전달 |
+| `firestore_quota_exceeded` | Firebase의 사용량·할당량 확인. 자동으로 유료 요금제로 전환하지 않음 |
+| `firestore_unavailable` | 서버와 저장소 간 통신이 실패하거나 지연됨. 잠시 뒤 다시 시도하고, 반복되면 서비스 상태 확인 |
+| `auth_setup_failed` | 위 항목으로 분류하지 못한 오류. 발생 시각과 진단 이름을 개발 담당자에게 전달 |
+
+Firestore 화면에 **‘데이터베이스 만들기’**가 보이면 아직 기본 데이터베이스가 없을 수 있습니다. **데이터·규칙 탭**이 보이면 선택된 데이터베이스 ID가 `(default)`인지 확인합니다. 기존 데이터베이스를 삭제하거나, 이름을 맞추려고 데이터를 옮기지 마세요.
+
+규칙이 올바르더라도 **서버 서비스 계정의 권한**은 별도로 필요합니다. 서버는 Admin SDK를 사용하므로 `allow read, write: if true;`로 바꿔도 서버 권한 오류의 해결책이 되지 않습니다.
+
+`auth-config`의 `kakao: true`는 설정값이 있다는 뜻입니다. 실제 Google 서버 인증과 Firestore 저장 성공까지 확인한 결과가 아닙니다. `naver: false`도 카카오 로그인 실패의 원인이 아닙니다.
 
 도움을 요청할 때는 **어느 단계인지, 오류 문구, 변수 이름 목록**을 알려 주세요. 비공개키·Client Secret의 실제 값과 JSON 파일 전체는 보내지 마세요.
 

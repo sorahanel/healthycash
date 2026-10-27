@@ -1,6 +1,7 @@
 import options from "../../shared/member-options.json" with { type: "json" };
 import { authorizationUrl } from "./providers.mjs";
 import { enabled } from "./config.mjs";
+import { setupFailureResponse } from "./diagnostics.mjs";
 import {
   body,
   clearCookies,
@@ -72,11 +73,16 @@ export function createHandlers({
       if (!enabled(config, provider)) fail(503, "auth_unavailable");
       const state = secret(),
         browser = secret();
-      await store.createFlow(hash(state), {
-        provider,
-        bindingHash: hash(browser),
-        expiresAtMs: now() + 600_000,
-      });
+      try {
+        await store.createFlow(hash(state), {
+          provider,
+          bindingHash: hash(browser),
+          expiresAtMs: now() + 600_000,
+        });
+      } catch (error) {
+        if (error instanceof HttpError) throw error;
+        return setupFailureResponse("oauth_state_create", error, "server_error");
+      }
       return redirect(authorizationUrl(config, provider, state), [
         setCookie(config, "oauth", browser, 600),
         setCookie(config, "login", "", 0),

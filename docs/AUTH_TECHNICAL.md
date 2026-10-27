@@ -91,3 +91,13 @@ npx firebase deploy --only firestore:rules,firestore:indexes --project healthyca
 현재 코드는 입력한 PEM 키로 custom token에 서명합니다. Firebase 서비스 계정에는 필요한 Firebase Authentication 및 Firestore 작업 권한을 부여하고, 권한 오류를 해결하려고 불필요한 프로젝트 소유자 권한을 추가하지 않습니다.
 
 공식 문서: [Firebase 맞춤 인증](https://firebase.google.com/docs/auth/web/custom-auth?hl=ko) · [카카오 로그인](https://developers.kakao.com/docs/latest/ko/kakaologin/rest-api) · [네이버 로그인](https://developers.naver.com/docs/login/api/api.md)
+
+## 6. 로그인 시작 실패 진단
+
+`auth-start`에서 Firestore의 `oauthFlows` 문서 생성이 실패하면 503 응답의 `error: server_error`와 함께 고정된 `diagnostic` 이름을 반환합니다. SDK 초기화 실패도 `auth_unavailable`과 고정된 진단 이름을 반환합니다. 성공한 로그인 흐름과 state·브라우저 쿠키 검증은 그대로 유지합니다. 저장 실패 시 제공자 페이지로 리다이렉트하거나 로그인 쿠키를 발급하지 않습니다.
+
+진단 분류는 SDK의 허용 목록 오류 코드, Google 토큰 응답의 알려진 오류 이름, 알려진 인증 실패·API 비활성화 표시만 사용합니다. 숫자 gRPC 오류 5·7·16·9·8·4·14를 각각 저장소 찾기·권한·인증·선행조건·할당량·통신 관련 범주로 구분합니다. 분류는 원인 범위를 좁히기 위한 것으로, 예를 들어 `firestore_not_found`만으로 잘못된 프로젝트 ID와 데이터베이스 미생성을 구분할 수는 없습니다.
+
+서버 로그에는 `event: auth_setup_failure`, 고정된 `stage`, 고정된 `diagnostic`만 남깁니다. 원본 오류 메시지·stack·metadata·요청·토큰·회원 ID·문서 경로·환경변수는 출력하지 않습니다. `auth-config`는 계속 설정값 존재 여부만 반환하며, 실제 Firebase 접속을 검증하는 엔드포인트가 아닙니다.
+
+재현 테스트는 `tests/server/diagnostics.test.mjs`에서 실행합니다. 저장 실패가 인증을 진행시키지 않는지, 실제 Firebase Admin SDK의 잘못된 PEM이 안전한 진단으로 바뀌는지, 응답과 로그에 민감한 테스트 문자열이 없는지 확인합니다.

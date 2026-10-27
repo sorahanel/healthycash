@@ -2,6 +2,7 @@ import { getConfig, enabled } from "./config.mjs";
 import { firebaseServices } from "./firebase.mjs";
 import { createProviders } from "./providers.mjs";
 import { createHandlers } from "./service.mjs";
+import { setupFailureResponse } from "./diagnostics.mjs";
 import { HttpError, json, method } from "./security.mjs";
 
 export async function handle(route, event) {
@@ -28,8 +29,8 @@ export async function handle(route, event) {
       providers: createProviders(config),
     })(route, event);
   } catch (error) {
-    return json(error instanceof HttpError ? error.status : 503, {
-      error: error instanceof HttpError ? error.code : "auth_unavailable",
-    });
+    if (error instanceof HttpError)
+      return json(error.status, { error: error.code });
+    return setupFailureResponse("firebase_initialize", error, "auth_unavailable");
   }
 }
